@@ -1,7 +1,5 @@
 # Terraform_CloudFront
-wordpress 環境を構築し CloudFront の behaviors で仮の静的サイト(image.html)のみS３にルーティングする Terraform です。
-
-Terraform that builds a wordpress environment and distributes only the hypothetical image display URL to s3 with cloudfront behaviors.
+wordpress 環境を構築し CloudFront の behaviors で仮の静的サイト(index.html)のみS３にルーティングする Terraform です。
 
 ※ tfvars,main.tf はご自身の環境に合わせてください。  
 ※ db_instance の情報はハードコーディングされています。別途 secrets manager、parameter store を使用してください。  
