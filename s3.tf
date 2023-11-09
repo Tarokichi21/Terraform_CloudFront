@@ -6,7 +6,7 @@ resource "aws_s3_bucket" "website_bucket" {
   acl    = "private"
 
   website {
-    index_document = "image.html"
+    index_document = "index.html"
     error_document = "error.html"
   }
 }
