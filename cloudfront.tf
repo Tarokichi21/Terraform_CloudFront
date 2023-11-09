@@ -47,7 +47,7 @@ resource "aws_cloudfront_distribution" "cf" {
   }
 
   ordered_cache_behavior {
-    path_pattern     = "/image.*"
+    path_pattern     = "/index.*"
     allowed_methods  = ["GET", "HEAD"]
     cached_methods   = ["GET", "HEAD"]
     target_origin_id = aws_s3_bucket.website_bucket.id
@@ -65,7 +65,6 @@ resource "aws_cloudfront_distribution" "cf" {
     max_ttl                = 31536000
     compress               = true
     viewer_protocol_policy = "redirect-to-https"
-    # allow-all, https-only, redirect-to-https
   }
 
   restrictions {
