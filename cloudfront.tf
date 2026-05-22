@@ -22,22 +22,14 @@ resource "aws_cloudfront_distribution" "cf" {
   origin {
     domain_name = aws_s3_bucket.website_bucket.bucket_regional_domain_name
     origin_id   = aws_s3_bucket.website_bucket.id
-
-    s3_origin_config {
-      origin_access_identity = aws_cloudfront_origin_access_identity.cf_s3_origin_access_identity.cloudfront_access_identity_path
-    }
+    origin_access_control_id = aws_cloudfront_origin_access_control.s3_oac.id
   }
 
   default_cache_behavior {
     allowed_methods = ["GET", "HEAD"]
     cached_methods  = ["GET", "HEAD"]
 
-    forwarded_values {
-      query_string = true
-      cookies {
-        forward = "all"
-      }
-    }
+    cache_policy_id = "658327ea-f89d-4fab-a63d-7e88639e58f6"
 
     target_origin_id       = aws_lb.for_webserver.name
     viewer_protocol_policy = "redirect-to-https"
@@ -47,24 +39,24 @@ resource "aws_cloudfront_distribution" "cf" {
   }
 
   ordered_cache_behavior {
-    path_pattern     = "/index.*"
+    path_pattern     = "/static/*"
     allowed_methods  = ["GET", "HEAD"]
     cached_methods   = ["GET", "HEAD"]
     target_origin_id = aws_s3_bucket.website_bucket.id
 
-    forwarded_values {
-      query_string = false
-
-      cookies {
-        forward = "none"
-      }
-    }
+    cache_policy_id = "658327ea-f89d-4fab-a63d-7e88639e58f6"
 
     min_ttl                = 0
     default_ttl            = 86400
     max_ttl                = 31536000
     compress               = true
     viewer_protocol_policy = "redirect-to-https"
+  }
+
+  custom_error_response {
+  error_code         = 404
+  response_page_path = "/static/index.html"
+  response_code      = 200
   }
 
   restrictions {
@@ -74,7 +66,7 @@ resource "aws_cloudfront_distribution" "cf" {
     }
   }
 
-  aliases = ["dev.${var.domain}"]
+  aliases = ["www.${var.domain}"]
 
   viewer_certificate {
     # cloudfront_default_certificate = true
@@ -84,13 +76,17 @@ resource "aws_cloudfront_distribution" "cf" {
   }
 }
 
-resource "aws_cloudfront_origin_access_identity" "cf_s3_origin_access_identity" {
-  comment = "S3 static bucket access identity"
+resource "aws_cloudfront_origin_access_control" "s3_oac" {
+  name                              = "s3-oac"
+  description                       = "OAC for S3"
+  origin_access_control_origin_type = "s3"
+  signing_behavior                  = "always"
+  signing_protocol                  = "sigv4"
 }
 
 resource "aws_route53_record" "route53_cloudfront" {
   zone_id = aws_route53_zone.route53_zone.id
-  name    = "dev.${var.domain}"
+  name    = "www.${var.domain}"
   type    = "A"
 
   alias {

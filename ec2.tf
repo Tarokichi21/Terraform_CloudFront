@@ -1,97 +1,44 @@
 # ---------------------------------------------
-# EC2 ~public-subnet-a~
+# EC2 ~private-subnet-a~
 # ---------------------------------------------
 resource "aws_instance" "a" {
-  ami           = "ami-078296f82eb463377"
+  ami           = data.aws_ami.al2023.id
   vpc_security_group_ids =[aws_security_group.for_webserver_ec2.id]
   instance_type = "t2.micro"
-  subnet_id     = aws_subnet.public_a.id
+  subnet_id     = aws_subnet.private_a.id
+  disable_api_termination = true
 
-  tags = {
-    Name    = "${var.project}-${var.environment}-a"
-    Project = var.project
-    Env     = var.environment
+  user_data = file("${path.module}/src/user_data.sh")
+  metadata_options {
+    http_endpoint               = "enabled"
+    http_tokens                 = "required"
+    http_put_response_hop_limit = 2
   }
-  user_data = <<EOF
-  #!/bin/bash
 
-  echo "===sudu su -==="
-  sudu su -
 
-  echo "===yum -y update==="
-  yum -y update
-
-  echo “===amazon-linux-extras install php7.2 -y===”
-  amazon-linux-extras install php7.2 -y
-
-  echo “===yum -y install mysql httpd php-mbstring php-xml gd php-gd===”
-  yum -y install mysql httpd php-mbstring php-xml gd php-gd
-
-  echo "===systemctl start httpd.service==="
-  systemctl start httpd.service
-  echo "===systemctl enable httpd.service==="
-  systemctl enable httpd.service
-
-  echo “===wget http://ja.wordpress.org/latest-ja.tar.gz -O /usr/local/src/latest-ja.tar.gz===”
-  wget http://ja.wordpress.org/latest-ja.tar.gz -O /usr/local/src/latest-ja.tar.gz
-
-  echo "===cd /usr/local/src/==="
-  cd /usr/local/src/
-
-  echo”===tar zxvf latest-ja.tar.gz===”
-  tar zxvf latest-ja.tar.gz
-
-  echo”===cp -r wordpress/* /var/www/html/===”
-  cp -r wordpress/* /var/www/html/
-
-  echo”===chown apache:apach -R /var/www/html===”
-  chown apache:apache -R /var/www/html
-  EOF
+  tags = merge(local.common_tags, {
+    Name = "${var.project}-${var.environment}-instance-a"
+  })
 }
 
 # ---------------------------------------------
-# EC2 ~public-subnet-c~
+# EC2 ~private-subnet-c~
 # ---------------------------------------------
 # resource "aws_instance" "c" {
-#   ami                    ="ami-0c3fd0f5d33134a76"
+#   ami                    = data.aws_ami.al2023.id
 #   vpc_security_group_ids =[aws_security_group.for_webserver_ec2.id]
 #   instance_type          ="t2.micro"
-#   subnet_id              = aws_subnet.public_c.id
-#   user_data= <<EOF
-#!/bin/bash
-
-# echo "===sudu su -==="
-# sudu su -
-
-# echo "===yum -y update==="
-# yum -y update
-
-# echo “===amazon-linux-extras install php7.2 -y===”
-# amazon-linux-extras install php7.2 -y
-
-# echo “===yum -y install mysql httpd php-mbstring php-xml gd php-gd===”
-# yum -y install mysql httpd php-mbstring php-xml gd php-gd
-
-# echo "===systemctl start httpd.service==="
-# systemctl start httpd.service
-# echo "===systemctl enable httpd.service==="
-# systemctl enable httpd.service
-
-# echo “===wget http://ja.wordpress.org/latest-ja.tar.gz -O /usr/local/src/latest-ja.tar.gz===”
-# wget http://ja.wordpress.org/latest-ja.tar.gz -O /usr/local/src/latest-ja.tar.gz
-
-# echo "===cd /usr/local/src/==="
-# cd /usr/local/src/
-
-# echo”===tar zxvf latest-ja.tar.gz===”
-# tar zxvf latest-ja.tar.gz
-
-# echo”===cp -r wordpress/* /var/www/html/===”
-# cp -r wordpress/* /var/www/html/
-
-# echo”===chown apache:apach -R /var/www/html===”
-# chown apache:apache -R /var/www/html
-# EOF
+#   subnet_id              = aws_subnet.private_c.id
+# 　disable_api_termination = true
+#   metadata_options {
+#    http_endpoint               = "enabled"
+#    http_tokens                 = "required"
+#    http_put_response_hop_limit = 2
+#   }
+#   user_data= file("${path.module}/src/user_data.sh")
+#  tags = merge(local.common_tags, {
+#  Name = "${var.project}-${var.environment}-instance-c"
+#  })
 # }
 
 # ---------------------------------------------
@@ -106,30 +53,35 @@ resource "aws_security_group" "for_webserver_ec2" {
     Project = var.project
     Env     = var.environment
   }
-}
-resource "aws_security_group_rule" "ec2_in_http" {
-  security_group_id        = aws_security_group.for_webserver_ec2.id
-  type                     = "ingress"
-  protocol                 = "tcp"
-  from_port                = 80
-  to_port                  = 80
-  source_security_group_id = aws_security_group.alb_sg.id
+
+  ingress {
+    from_port       = 80
+    to_port         = 80
+    protocol        = "tcp"
+    security_groups = [aws_security_group.alb_sg.id]
+  }
+
+  ingress {
+    from_port       = 443
+    to_port         = 443
+    protocol        = "tcp"
+    security_groups = [aws_security_group.alb_sg.id]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
 }
 
-resource "aws_security_group_rule" "ec2_in_https" {
-  security_group_id        = aws_security_group.for_webserver_ec2.id
-  type                     = "ingress"
-  protocol                 = "tcp"
-  from_port                = 443
-  to_port                  = 443
-  source_security_group_id = aws_security_group.alb_sg.id
-}
+data "aws_ami" "al2023" {
+  most_recent = true
+  owners      = ["amazon"]
 
-resource "aws_security_group_rule" "ec2_out_mysql" {
-  security_group_id = aws_security_group.for_webserver_ec2.id
-  type              = "egress"
-  protocol          = "-1"
-  from_port         = 0
-  to_port           = 0
-  cidr_blocks       = ["0.0.0.0/0"]
+  filter {
+    name   = "name"
+    values = ["al2023-ami-*-x86_64"]
+  }
 }

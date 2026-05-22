@@ -21,11 +21,9 @@ resource "aws_lb" "for_webserver" {
 resource "aws_security_group" "alb_sg" {
   name   = "${var.project}-${var.environment}-alb-sg"
   vpc_id = aws_vpc.vpc.id
-  tags = {
-    Name    = "${var.project}-${var.environment}-alb-sg"
-    Project = var.project
-    Env     = var.environment
-  }
+  tags = merge(local.common_tags, {
+    Name = "${var.project}-${var.environment}-alb-sg"
+  })
 }
 resource "aws_security_group_rule" "alb_in_http" {
   security_group_id = aws_security_group.alb_sg.id
@@ -89,12 +87,18 @@ resource "aws_lb_target_group" "for_webserver" {
   port     = 80
   protocol = "HTTP"
   vpc_id   = aws_vpc.vpc.id
-
-  tags = {
-    Name    = "${var.project}-${var.environment}-app-tg"
-    Project = var.project
-    Env     = var.environment
+  health_check {
+  path                = "/"
+  healthy_threshold   = 2
+  unhealthy_threshold = 2
+  timeout             = 5
+  interval            = 30
+  matcher             = "200-399"
   }
+
+  tags = merge(local.common_tags, {
+    Name = "${var.project}-${var.environment}-app-tg"
+  })
 }
 # ---------------------------------------------
 # ALB ~target-group link to EC2~
