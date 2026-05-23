@@ -5,18 +5,18 @@ resource "aws_db_instance" "mysql" {
   identifier = "${var.project}-${var.environment}-mysql"
 
   engine         = "mysql"
-  engine_version = "5.7"
+  engine_version = "8.0"
 
   instance_class = "db.t3.micro"
 
   allocated_storage = 20
   storage_type      = "gp3"
 
-  db_name  = "appdb"
+  db_name  = "db_name"
   username = "admin"
   password = "ChangeMe123!"
 
-  parameter_group_name = "default.mysql5.7"
+  parameter_group_name = "default.mysql8.0"
 
   db_subnet_group_name   = aws_db_subnet_group.dbsubnet.name
   vpc_security_group_ids = [aws_security_group.for_rds.id]
